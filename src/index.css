@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-gov-navy: #10233F;
+    --color-gov-blue: #1D4ED8;
+    --color-gov-teal: #0F9D92;
+    --color-gov-bg: #F5F7FB;
+    --color-gov-card: #FFFFFF;
+    --color-gov-text: #172B4D;
+    --color-gov-muted: #64748B;
+    --color-gov-border: #E2E8F0;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #F5F7FB;
+    color: #172B4D;
+    letter-spacing: -0.011em;
+  }
+}
+
+/* Custom Scrollbar for enterprise feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Print specific optimizations */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

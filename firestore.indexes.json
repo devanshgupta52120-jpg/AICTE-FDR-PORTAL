@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "fdrs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "institutionId", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fdrs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "region", "order": "ASCENDING" },
+        { "fieldPath": "maturityDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fdrs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "maturityDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fdrId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,177 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default Deny All Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Authentication & Core Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Server-enforced Administrator Allowlist (Google OAuth token verified email or explicit admin collection)
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email in [
+          'devanshgupta52120@gmail.com',
+          'admin@aicte-india.org',
+          'finance.hq@aicte-india.org'
+        ] ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Server-enforced Regional Officer Allowlist
+    function isOfficer() {
+      return isSignedIn() && (
+        isAdmin() ||
+        exists(/databases/$(database)/documents/officers/$(request.auth.uid)) ||
+        (request.auth.token.email != null &&
+         request.auth.token.email.matches('.*@aicte-india\\.org$') &&
+         request.auth.token.email_verified == true)
+      );
+    }
+
+    // Validation Blueprint for Fixed Deposit Receipt
+    function isValidFDR(data) {
+      return (
+        data.fdrNumber is string && data.fdrNumber.size() > 0 && data.fdrNumber.size() <= 100 &&
+        data.institutionId is string && data.institutionId.size() > 0 && data.institutionId.size() <= 50 &&
+        data.institutionName is string && data.institutionName.size() > 0 && data.institutionName.size() <= 200 &&
+        data.bankName is string && data.bankName.size() <= 100 &&
+        data.branchName is string && data.branchName.size() <= 150 &&
+        data.ifscCode is string && data.ifscCode.size() == 11 && data.ifscCode.matches('^[A-Z]{4}0[A-Z0-9]{6}$') &&
+        data.accountNumber is string && data.accountNumber.size() <= 50 &&
+        data.amount is number && data.amount > 0 &&
+        data.depositDate is string && data.depositDate.size() <= 10 &&
+        data.maturityDate is string && data.maturityDate.size() <= 10 &&
+        data.status is string && data.status in [
+          'draft',
+          'pending_verification',
+          'under_review',
+          'verified',
+          'discrepancy_reported',
+          'renewal_requested',
+          'renewed',
+          'release_requested',
+          'released',
+          'encashed',
+          'rejected'
+        ] &&
+        data.createdBy is string && data.createdBy.size() <= 128
+      );
+    }
+
+    // FDR Collection Rules
+    match /fdrs/{fdrId} {
+      // Single Document Retrieval
+      // Allows owner, officer, admin, or checking non-existent document
+      allow get: if isSignedIn() && (
+        resource == null ||
+        isAdmin() ||
+        isOfficer() ||
+        resource.data.createdBy == request.auth.uid ||
+        (request.auth.token.institutionId != null && resource.data.institutionId == request.auth.token.institutionId)
+      );
+
+      // List Queries (Requires query to be bounded by createdBy == request.auth.uid for non-admins)
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        isOfficer() ||
+        resource.data.createdBy == request.auth.uid
+      );
+
+      // Creation:
+      // Admins can seed / import any valid FDR status.
+      // Ordinary institution users can only submit preliminary records ('draft' or 'pending_verification').
+      // Users can never forge createdBy.
+      allow create: if isValidId(fdrId) &&
+        isSignedIn() &&
+        incoming().createdBy == request.auth.uid &&
+        isValidFDR(incoming()) && (
+          isAdmin() ||
+          incoming().status in ['draft', 'pending_verification']
+        );
+
+      // Updates: Server-Enforced RBAC
+      // Institution users CANNOT verify their own FDRs or approve renewals/releases.
+      allow update: if isValidId(fdrId) &&
+        isSignedIn() &&
+        isValidFDR(incoming()) && (
+          // Admin override
+          isAdmin() ||
+
+          // Officer scrutiny & verification actions
+          (isOfficer() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'verification', 'updatedAt'])) ||
+
+          // Officer / Admin approving renewal
+          (isOfficer() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'maturityDate', 'amount', 'interestRate', 'fdrNumber', 'renewalHistory', 'updatedAt'])) ||
+
+          // Officer / Admin approving release
+          (isOfficer() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'releaseDetails', 'updatedAt'])) ||
+
+          // Institution User: Submitting term renewal request
+          (existing().createdBy == request.auth.uid &&
+            incoming().createdBy == existing().createdBy &&
+            incoming().status == 'renewal_requested' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'renewalHistory', 'documents', 'updatedAt'])) ||
+
+          // Institution User: Submitting release / refund request
+          (existing().createdBy == request.auth.uid &&
+            incoming().createdBy == existing().createdBy &&
+            incoming().status == 'release_requested' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'releaseDetails', 'documents', 'updatedAt'])) ||
+
+          // Institution User: Attaching documents or modifying draft before approval
+          (existing().createdBy == request.auth.uid &&
+            incoming().createdBy == existing().createdBy &&
+            existing().status in ['draft', 'pending_verification', 'discrepancy_reported'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['documents', 'remarks', 'updatedAt']))
+        );
+
+      // Deletion: Strict Administrator Only
+      allow delete: if isValidId(fdrId) && isAdmin();
+    }
+
+    // Audit Logs Collection Rules (Append-Only)
+    match /audit_logs/{logId} {
+      allow get, list: if isSignedIn() && (isAdmin() || isOfficer());
+      allow create: if isValidId(logId) &&
+        isSignedIn() &&
+        incoming().performedBy == request.auth.uid &&
+        incoming().action is string &&
+        incoming().details is string &&
+        incoming().details.size() <= 1000;
+      allow update, delete: if false; // Regulatory audit trail cannot be modified or deleted
+    }
+
+    // Administrative User Profiles
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isOfficer());
+      allow list: if isAdmin();
+      allow create, update: if isSignedIn() && (
+        request.auth.uid == userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'phone', 'institutionName', 'designation'])
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}

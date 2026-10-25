@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "FDR": {
+      "title": "FDR",
+      "description": "Represents a Fixed Deposit Receipt pledged jointly with the AICTE Regional Officer as financial security / endowment fund.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the FDR document" },
+        "fdrNumber": { "type": "string", "maxLength": 100, "description": "Original FDR certificate number" },
+        "institutionId": { "type": "string", "maxLength": 50, "description": "AICTE Permanent Institute ID (PID)" },
+        "institutionName": { "type": "string", "maxLength": 200, "description": "Legal name of the technical institution" },
+        "region": { "type": "string", "maxLength": 50, "description": "AICTE Regional jurisdiction" },
+        "state": { "type": "string", "maxLength": 50, "description": "State where the college is located" },
+        "city": { "type": "string", "maxLength": 100, "description": "City of the institution" },
+        "bankName": { "type": "string", "maxLength": 100, "description": "Issuing scheduled commercial bank" },
+        "branchName": { "type": "string", "maxLength": 150, "description": "Branch name and location" },
+        "ifscCode": { "type": "string", "pattern": "^[A-Z]{4}0[A-Z0-9]{6}$", "description": "Bank branch IFSC code" },
+        "accountNumber": { "type": "string", "maxLength": 50, "description": "Joint deposit account number" },
+        "amount": { "type": "number", "description": "Principal deposit amount in INR" },
+        "depositDate": { "type": "string", "format": "date", "description": "Date of initial deposit (YYYY-MM-DD)" },
+        "maturityDate": { "type": "string", "format": "date", "description": "Date of maturity (YYYY-MM-DD)" },
+        "interestRate": { "type": "number", "description": "Annual interest rate percentage" },
+        "tenureMonths": { "type": "number", "description": "Lock-in tenure in months" },
+        "jointHolderName": { "type": "string", "description": "Official AICTE Joint Holder title" },
+        "purpose": { "type": "string", "description": "Statutory approval purpose for FDR pledge" },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "pending_verification",
+            "under_review",
+            "verified",
+            "discrepancy_reported",
+            "renewal_requested",
+            "renewed",
+            "release_requested",
+            "released",
+            "encashed",
+            "rejected"
+          ]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string", "description": "User UID of author" },
+        "createdByName": { "type": "string", "description": "Display name of author" }
+      },
+      "required": [
+        "fdrNumber",
+        "institutionId",
+        "institutionName",
+        "bankName",
+        "branchName",
+        "ifscCode",
+        "accountNumber",
+        "amount",
+        "depositDate",
+        "maturityDate",
+        "status",
+        "createdBy"
+      ]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable regulatory audit trail entry recording portal events.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fdrId": { "type": "string" },
+        "fdrNumber": { "type": "string" },
+        "action": { "type": "string" },
+        "performedBy": { "type": "string" },
+        "performedByName": { "type": "string" },
+        "role": { "type": "string", "enum": ["institution", "officer", "admin"] },
+        "details": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["action", "performedBy", "role", "details", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/fdrs/{fdrId}": {
+      "schema": { "$ref": "#/entities/FDR" },
+      "description": "Stores individual Fixed Deposit Receipts pledged to AICTE."
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Stores immutable audit events across the FDR lifecycle."
+    }
+  }
+}

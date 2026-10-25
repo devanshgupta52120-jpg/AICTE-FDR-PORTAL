@@ -1,0 +1,6 @@
+{
+  "name": "AICTE FDR Management Portal",
+  "description": "Comprehensive portal for All India Council for Technical Education (AICTE) Fixed Deposit Receipt (FDR) lifecycle management, verification, renewal, release, and compliance tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

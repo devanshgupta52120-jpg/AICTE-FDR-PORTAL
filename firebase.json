@@ -1,0 +1,14 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-aictefdrmanageme-6d482198-9618-4626-b21d-d57291c17023",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    },
+    {
+      "database": "(default)",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    }
+  ]
+}
